@@ -8,10 +8,447 @@
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Mona Mayhem</title>
+		<title>Mona Mayhem - GitHub Contribution Battle Arena</title>
+		<style>
+			:root {
+				font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+			}
+
+			body {
+				margin: 0;
+				padding: 1.25rem;
+				background: #f6f7f9;
+				color: #1d2530;
+			}
+
+			main {
+				max-width: 720px;
+				margin: 0 auto;
+			}
+
+			h1 {
+				margin-bottom: 0.25rem;
+			}
+
+			.subtitle {
+				margin-top: 0;
+				margin-bottom: 1.25rem;
+				color: #4c5766;
+			}
+
+			.battle-form {
+				display: grid;
+				gap: 0.9rem;
+				padding: 1rem;
+				border: 1px solid #dce1e7;
+				border-radius: 0.5rem;
+				background: #ffffff;
+			}
+
+			label {
+				display: block;
+				font-weight: 600;
+				margin-bottom: 0.35rem;
+			}
+
+			input {
+				width: 100%;
+				padding: 0.65rem 0.75rem;
+				border: 1px solid #bcc6d3;
+				border-radius: 0.4rem;
+				font-size: 1rem;
+				box-sizing: border-box;
+			}
+
+			button {
+				padding: 0.75rem 1rem;
+				border: 0;
+				border-radius: 0.4rem;
+				background: #1669d3;
+				color: #ffffff;
+				font-weight: 600;
+				font-size: 1rem;
+				cursor: pointer;
+			}
+
+			button:disabled {
+				opacity: 0.7;
+				cursor: not-allowed;
+			}
+
+			.status {
+				margin-top: 1rem;
+				min-height: 1.5rem;
+				font-weight: 600;
+			}
+
+			.status.error {
+				color: #b2292e;
+			}
+
+			.status.success {
+				color: #17623a;
+			}
+
+			.results {
+				margin-top: 1rem;
+				padding: 1rem;
+				border: 1px solid #dce1e7;
+				border-radius: 0.5rem;
+				background: #ffffff;
+			}
+
+			.results h2 {
+				margin-top: 0;
+			}
+
+			.summary {
+				font-weight: 700;
+				margin-bottom: 0.85rem;
+			}
+
+			.players {
+				display: grid;
+				gap: 0.75rem;
+			}
+
+			.player {
+				padding: 0.75rem;
+				border: 1px solid #dce1e7;
+				border-radius: 0.45rem;
+				background: #fcfdff;
+			}
+
+			.player h3 {
+				margin-top: 0;
+				margin-bottom: 0.35rem;
+			}
+
+			.player p {
+				margin: 0.2rem 0;
+			}
+
+			.note {
+				font-size: 0.9rem;
+				color: #5c6776;
+			}
+
+			@media (min-width: 640px) {
+				.players {
+					grid-template-columns: 1fr 1fr;
+				}
+			}
+		</style>
 	</head>
 	<body>
-		<h1>Mona Mayhem</h1>
-		<p>Welcome to Mona Mayhem! Time to build a GitHub Contribution Battle Arena.</p>
+		<main>
+			<h1>Mona Mayhem</h1>
+			<p class="subtitle">GitHub Contribution Battle Arena</p>
+
+			<form id="battleForm" class="battle-form">
+				<div>
+					<label for="playerOne">Player 1 Username</label>
+					<input id="playerOne" name="playerOne" type="text" autocomplete="off" required />
+				</div>
+				<div>
+					<label for="playerTwo">Player 2 Username</label>
+					<input id="playerTwo" name="playerTwo" type="text" autocomplete="off" required />
+				</div>
+				<button id="battleButton" type="submit">Battle</button>
+			</form>
+
+			<p id="statusMessage" class="status" aria-live="polite"></p>
+
+			<section id="results" class="results" hidden>
+				<h2>Results</h2>
+				<p id="battleSummary" class="summary"></p>
+				<div id="players" class="players"></div>
+			</section>
+		</main>
+
+		<script>
+			const USERNAME_PATTERN = /^[A-Za-z0-9-]{1,39}$/;
+
+			const form = document.getElementById('battleForm');
+			const playerOneInput = document.getElementById('playerOne');
+			const playerTwoInput = document.getElementById('playerTwo');
+			const battleButton = document.getElementById('battleButton');
+			const statusMessage = document.getElementById('statusMessage');
+			const resultsSection = document.getElementById('results');
+			const battleSummary = document.getElementById('battleSummary');
+			const playersContainer = document.getElementById('players');
+
+			function setStatus(message, type) {
+				statusMessage.textContent = message;
+				statusMessage.className = `status ${type}`;
+			}
+
+			function clearResults() {
+				battleSummary.textContent = '';
+				playersContainer.innerHTML = '';
+				resultsSection.hidden = true;
+			}
+
+			function isValidUsername(username) {
+				if (!USERNAME_PATTERN.test(username)) {
+					return false;
+				}
+
+				if (username.startsWith('-') || username.endsWith('-')) {
+					return false;
+				}
+
+				return true;
+			}
+
+			function readNumberFromRecord(record, keys) {
+				for (const key of keys) {
+					const value = record[key];
+					if (typeof value === 'number' && Number.isFinite(value)) {
+						return value;
+					}
+				}
+
+				return undefined;
+			}
+
+			function extractDailyCounts(source) {
+				const counts = [];
+
+				if (!source || typeof source !== 'object') {
+					return counts;
+				}
+
+				if (Array.isArray(source)) {
+					for (const item of source) {
+						if (item && typeof item === 'object') {
+							const count = readNumberFromRecord(item, ['count', 'contributionCount', 'contributions']);
+							if (typeof count === 'number') {
+								counts.push(Math.max(0, count));
+							}
+						}
+					}
+
+					return counts;
+				}
+
+				const record = source;
+
+				if (Array.isArray(record.weeks)) {
+					for (const week of record.weeks) {
+						if (!week || typeof week !== 'object') {
+							continue;
+						}
+
+						const contributionDays = Array.isArray(week.contributionDays)
+							? week.contributionDays
+							: Array.isArray(week.contribution_days)
+								? week.contribution_days
+								: [];
+
+						for (const day of contributionDays) {
+							if (!day || typeof day !== 'object') {
+								continue;
+							}
+
+							const count = readNumberFromRecord(day, ['contributionCount', 'count', 'contributions']);
+							if (typeof count === 'number') {
+								counts.push(Math.max(0, count));
+							}
+						}
+					}
+				}
+
+				if (Array.isArray(record.contributions)) {
+					counts.push(...extractDailyCounts(record.contributions));
+				}
+
+				if (Array.isArray(record.days)) {
+					counts.push(...extractDailyCounts(record.days));
+				}
+
+				if (Array.isArray(record.data)) {
+					counts.push(...extractDailyCounts(record.data));
+				}
+
+				return counts;
+			}
+
+			function extractMetrics(payload) {
+				if (!payload || typeof payload !== 'object') {
+					return null;
+				}
+
+				const record = payload;
+				const explicitTotal = readNumberFromRecord(record, ['total', 'totalContributions', 'total_contributions', 'contributionCount']);
+				const dailyCounts = extractDailyCounts(record);
+				const totalFromDays = dailyCounts.reduce((sum, value) => sum + value, 0);
+				const total = typeof explicitTotal === 'number' ? explicitTotal : totalFromDays;
+				const activeDays = dailyCounts.filter((count) => count > 0).length;
+
+				if (!Number.isFinite(total)) {
+					return null;
+				}
+
+				return {
+					total: Math.max(0, Math.round(total)),
+					activeDays,
+				};
+			}
+
+			async function fetchPlayer(username) {
+				let response;
+				try {
+					response = await fetch(`/api/contributions/${encodeURIComponent(username)}`);
+				} catch {
+					return {
+						ok: false,
+						username,
+						error: 'Network error while fetching player data.',
+					};
+				}
+
+				let body = {};
+				try {
+					body = await response.json();
+				} catch {
+					body = {};
+				}
+
+				if (!response.ok) {
+					const message = typeof body.error === 'string' ? body.error : `Request failed with status ${response.status}.`;
+					const retryAfter = response.headers.get('Retry-After');
+					return {
+						ok: false,
+						username,
+						error: retryAfter ? `${message} Try again in ${retryAfter} seconds.` : message,
+					};
+				}
+
+				const metrics = extractMetrics(body.data);
+				if (!metrics) {
+					return {
+						ok: false,
+						username,
+						error: 'Could not read contribution metrics from API response.',
+					};
+				}
+
+				return {
+					ok: true,
+					username: typeof body.username === 'string' ? body.username : username,
+					stale: Boolean(body.stale),
+					metrics,
+				};
+			}
+
+			function comparePlayers(first, second) {
+				if (first.metrics.total > second.metrics.total) {
+					return 1;
+				}
+				if (first.metrics.total < second.metrics.total) {
+					return -1;
+				}
+				if (first.metrics.activeDays > second.metrics.activeDays) {
+					return 1;
+				}
+				if (first.metrics.activeDays < second.metrics.activeDays) {
+					return -1;
+				}
+				return 0;
+			}
+
+			function renderPlayerCard(player, title) {
+				const card = document.createElement('article');
+				card.className = 'player';
+
+				const heading = document.createElement('h3');
+				heading.textContent = `${title}: ${player.username}`;
+				card.appendChild(heading);
+
+				if (player.ok) {
+					const total = document.createElement('p');
+					total.textContent = `Total contributions: ${player.metrics.total}`;
+					card.appendChild(total);
+
+					const days = document.createElement('p');
+					days.textContent = `Active days: ${player.metrics.activeDays}`;
+					card.appendChild(days);
+
+					if (player.stale) {
+						const staleNote = document.createElement('p');
+						staleNote.className = 'note';
+						staleNote.textContent = 'Showing stale cached data.';
+						card.appendChild(staleNote);
+					}
+				} else {
+					const error = document.createElement('p');
+					error.textContent = player.error;
+					card.appendChild(error);
+				}
+
+				return card;
+			}
+
+			form.addEventListener('submit', async (event) => {
+				event.preventDefault();
+
+				const playerOne = playerOneInput.value.trim();
+				const playerTwo = playerTwoInput.value.trim();
+
+				clearResults();
+
+				if (!playerOne || !playerTwo) {
+					setStatus('Enter both usernames before starting a battle.', 'error');
+					return;
+				}
+
+				if (playerOne.toLowerCase() === playerTwo.toLowerCase()) {
+					setStatus('Choose two different usernames for the battle.', 'error');
+					return;
+				}
+
+				if (!isValidUsername(playerOne) || !isValidUsername(playerTwo)) {
+					setStatus('Usernames must be 1-39 letters, numbers, or hyphens, and cannot start or end with a hyphen.', 'error');
+					return;
+				}
+
+				battleButton.disabled = true;
+				battleButton.textContent = 'Battling...';
+				setStatus('Fetching contribution data...', '');
+
+				const [firstResult, secondResult] = await Promise.all([
+					fetchPlayer(playerOne),
+					fetchPlayer(playerTwo),
+				]);
+
+				resultsSection.hidden = false;
+				playersContainer.appendChild(renderPlayerCard(firstResult, 'Player 1'));
+				playersContainer.appendChild(renderPlayerCard(secondResult, 'Player 2'));
+
+				if (firstResult.ok && secondResult.ok) {
+					const comparison = comparePlayers(firstResult, secondResult);
+					if (comparison > 0) {
+						battleSummary.textContent = `Winner: ${firstResult.username}`;
+					} else if (comparison < 0) {
+						battleSummary.textContent = `Winner: ${secondResult.username}`;
+					} else {
+						battleSummary.textContent = 'Tie: both players have equal total contributions and active days.';
+					}
+
+					setStatus('Battle complete.', 'success');
+				} else if (!firstResult.ok && !secondResult.ok) {
+					battleSummary.textContent = 'No winner yet.';
+					setStatus('Both player requests failed. Check the errors below.', 'error');
+				} else {
+					const winner = firstResult.ok ? firstResult.username : secondResult.username;
+					battleSummary.textContent = `Partial result: ${winner} data loaded.`;
+					setStatus('One player request failed. Showing available data.', 'error');
+				}
+
+				battleButton.disabled = false;
+				battleButton.textContent = 'Battle';
+			});
+		</script>
 	</body>
 </html>
