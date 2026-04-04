@@ -30,6 +30,32 @@
 - Keep instructions concise and link to existing docs instead of duplicating long explanations.
 - Prefer updating README.md for user-facing setup details and docs/* for static workshop site content.
 
+## Design Guide
+- Theme direction: retro arcade with CRT-inspired atmosphere, neon accents, and dark sci-fi contrast.
+- Primary background: #0a0a1a.
+- Accent colors:
+- Neon green: #5fed83.
+- Neon purple: #8a2be2.
+- Supporting neutrals: high-contrast light text for readability over dark panels; muted blue-gray copy for secondary text.
+- Typography:
+- Display font: Press Start 2P for headings, labels, badges, and high-emphasis UI text.
+- Body font: keep a readable sans-serif for paragraphs and dense data text.
+- Font usage rule: avoid using Press Start 2P for long body paragraphs due to legibility constraints.
+- Animation style:
+- Neon pulse and glow for hero/title elements.
+- Subtle CRT scanline overlays and vignette effects for environmental depth.
+- Gradient-shift motion for key game-like badges (for example, VS markers).
+- Shimmer/shine overlays for result cards; keep intensity moderate to preserve text readability.
+- Hover glow micro-interactions for contribution cells and key interactive controls.
+- Motion principles:
+- Favor smooth, purposeful loops over rapid flashing.
+- Keep animation durations moderate and avoid stacking too many high-intensity effects simultaneously.
+- Always include a prefers-reduced-motion fallback that disables non-essential animation.
+- Accessibility and contrast:
+- Maintain clear color contrast for text and controls against the dark background.
+- Ensure animation does not obscure critical data (usernames, totals, status, date ranges).
+- Preserve obvious focus states for keyboard navigation.
+
 ## Reference Docs
 - See README.md for project setup, prerequisites, and stack summary.
 - See astro.config.mjs and tsconfig.json for runtime and type-checking constraints.
